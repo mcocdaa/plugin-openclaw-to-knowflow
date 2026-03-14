@@ -1,0 +1,17 @@
+{
+  "id": "knowflow",
+  "name": "KnowFlow Plugin",
+  "version": "1.0.0",
+  "description": "KnowFlow knowledge management integration for OpenClaw",
+  "author": "KnowFlow",
+  "entry": "dist/index.js",
+  "configSchema": {
+    "baseUrl": {
+      "type": "string",
+      "default": "http://localhost:3000",
+      "description": "KnowFlow API base URL"
+    }
+  },
+  "capabilities": ["agent_tool"],
+  "schema_version": "1.0"
+}
