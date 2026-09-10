@@ -87,10 +87,15 @@ export default function (api: any) {
         foldLevel = 3,
       } = params;
 
-      // Step 1: Create item
+      // Step 1: Create item（openclaw_project_id 为必填 Key，创建时即需提供）
       const createResult = (await apiRequest(baseUrl, "POST", "/api/v1/item", {
         name,
-        keyValues: { name, file_path: content, file_type: "text/plain" },
+        attributes: {
+          name,
+          file_path: content,
+          file_type: "text/plain",
+          openclaw_project_id: projectId,
+        },
       })) as any;
 
       const itemId = createResult.item.id;
