@@ -98,7 +98,7 @@ export default function (api: any) {
         },
       })) as any;
 
-      const itemId = createResult.item.id;
+      const itemId = (createResult.data ?? createResult).item.id;
 
       // Step 2: Set OpenClaw attributes
       await apiRequest(
@@ -159,8 +159,8 @@ export default function (api: any) {
       qs.set("page", String(params.page || 1));
       qs.set("page_size", String(params.pageSize || 20));
 
-      const result = await apiRequest(baseUrl, "GET", `/api/v1/item/search?${qs.toString()}`);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      const result = (await apiRequest(baseUrl, "GET", `/api/v1/item/search?${qs.toString()}`)) as any;
+      return { content: [{ type: "text", text: JSON.stringify(result.data ?? result) }] };
     },
   });
 
@@ -177,12 +177,12 @@ export default function (api: any) {
     async execute(_id: string, params: any) {
       const baseUrl = getBaseUrl(api);
       const limit = params.limit || 20;
-      const result = await apiRequest(
+      const result = (await apiRequest(
         baseUrl,
         "GET",
         `/api/v1/item/search?sort=recent&page_size=${limit}`
-      );
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      )) as any;
+      return { content: [{ type: "text", text: JSON.stringify(result.data ?? result) }] };
     },
   });
 
@@ -199,8 +199,8 @@ export default function (api: any) {
     },
     async execute(_id: string, params: any) {
       const baseUrl = getBaseUrl(api);
-      const result = await apiRequest(baseUrl, "GET", `/api/v1/item/${params.id}`);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      const result = (await apiRequest(baseUrl, "GET", `/api/v1/item/${params.id}`)) as any;
+      return { content: [{ type: "text", text: JSON.stringify(result.data ?? result) }] };
     },
   });
 
