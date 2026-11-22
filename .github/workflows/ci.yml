@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Validate, build & verify entry
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Validate JSON manifests
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const assert = require("node:assert/strict");
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            assert.equal(typeof pkg.name, "string");
+            assert.ok(pkg.name.length > 0, "package.json name required");
+            assert.equal(typeof pkg.version, "string");
+            assert.ok(pkg.version.length > 0, "package.json version required");
+            assert.equal(typeof pkg.main, "string");
+            assert.ok(Array.isArray(pkg.openclaw?.extensions) && pkg.openclaw.extensions.length > 0, "openclaw.extensions required");
+            for (const ext of pkg.openclaw.extensions) {
+              assert.ok(fs.existsSync(ext), `Missing extension entry: ${ext}`);
+            }
+            const plugin = JSON.parse(fs.readFileSync("openclaw.plugin.json", "utf8"));
+            assert.equal(typeof plugin.id, "string");
+            assert.ok(plugin.id.length > 0, "openclaw.plugin.json id required");
+            assert.equal(typeof plugin.name, "string");
+            assert.ok(plugin.name.length > 0, "openclaw.plugin.json name required");
+            assert.equal(plugin.version, pkg.version, "manifest version mismatch");
+            JSON.parse(fs.readFileSync("tsconfig.json", "utf8"));
+            console.log("Manifests OK:", pkg.name, pkg.version, pkg.openclaw.extensions);
+          '
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (tsc)
+        run: npm run build
+
+      - name: Verify built entrypoint
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const assert = require("node:assert/strict");
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            assert.ok(fs.existsSync(pkg.main), `Missing built entrypoint: ${pkg.main}`);
+            if (pkg.types) {
+              assert.ok(fs.existsSync(pkg.types), `Missing built types: ${pkg.types}`);
+            }
+          '
+          node -e '
+            import("./dist/index.js").then((mod) => {
+              if (typeof mod.default !== "function") {
+                throw new Error("Expected default export function in dist/index.js");
+              }
+              const tools = [];
+              mod.default({ registerTool: (t) => tools.push(t.name) });
+              if (tools.length === 0) {
+                throw new Error("No tools registered by built plugin");
+              }
+              console.log("Built entry OK, tools:", tools);
+            }).catch((err) => {
+              console.error(err);
+              process.exit(1);
+            });
+          '
